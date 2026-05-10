@@ -7,7 +7,7 @@
 
 ## Overview
 
-**FinSight** is a financial operations platform built for a banking/fintech context.  
+**FinSight** is a financial operations platform 
 It monitors payment transactions between accounts, detects suspicious activity patterns,  
 and provides daily balance reconciliation with discrepancy reporting.
 
