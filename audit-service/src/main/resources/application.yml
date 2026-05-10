@@ -1,0 +1,61 @@
+server:
+  port: 8082
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: finsight-audit-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/finsight
+    username: finsight_user
+    password: finsight_pass
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: AuditServicePool
+      maximum-pool-size: 8
+      minimum-idle: 3
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        default_schema: audit_svc
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+
+logging:
+  level:
+    com.finsight: DEBUG
+
+finsight:
+  services:
+    transaction-service-url: http://localhost:8081
+  reconciliation:
+    discrepancy-tolerance: 0.01   # IDR tolerance before flagging as discrepancy
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+
+finsight:
+  services:
+    transaction-service-url: ${TRANSACTION_SERVICE_URL:http://transaction-service:8081}

@@ -1,0 +1,65 @@
+server:
+  port: 8081
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: finsight-transaction-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/finsight
+    username: finsight_user
+    password: finsight_pass
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: TransactionServicePool
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        default_schema: transaction_svc
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+  info:
+    title: FinSight Transaction Service API
+    version: 1.0.0
+
+logging:
+  level:
+    com.finsight: DEBUG
+    org.hibernate.SQL: DEBUG
+
+finsight:
+  business:
+    suspicious-velocity-threshold: 5        # max transactions per hour before flagging
+    suspicious-amount-multiplier: 3.0       # flag if amount > avg * this multiplier
+    suspicious-drain-threshold: 0.20        # flag if balance drops below 20% in one day
+    minimum-transaction-amount: 1000.00     # minimum allowed transaction in IDR
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+  jpa:
+    show-sql: false

@@ -1,0 +1,244 @@
+{
+  "info": {
+    "name": "FinSight Real Backend Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00. Smoke Test",
+      "item": [
+        {
+          "name": "Transaction Swagger",
+          "request": {
+            "method": "GET",
+            "url": "{{base_txn}}/swagger-ui.html"
+          }
+        },
+        {
+          "name": "Audit Swagger",
+          "request": {
+            "method": "GET",
+            "url": "{{base_audit}}/swagger-ui.html"
+          }
+        }
+      ]
+    },
+    {
+      "name": "01. Account Management",
+      "item": [
+        {
+          "name": "[POSITIVE] Create Savings Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountNumber\": \"ACC-1234-ABCD\",\n  \"holderName\": \"Ahmad Fauzi\",\n  \"accountType\": \"SAVINGS\",\n  \"initialBalance\": 1000000,\n  \"currency\": \"IDR\"\n}"
+            },
+            "url": "{{base_txn}}/api/v1/accounts"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const rand4 = () =>",
+                  "    Math.floor(1000 + Math.random() * 9000);",
+                  "",
+                  "const letters4 = () =>",
+                  "    Array.from({ length: 4 }, () =>",
+                  "        String.fromCharCode(",
+                  "            65 + Math.floor(Math.random() * 26)",
+                  "        )",
+                  "    ).join('');",
+                  "",
+                  "let reqBody = JSON.parse(pm.request.body.raw);",
+                  "",
+                  "reqBody.accountNumber =",
+                  "    `ACC-${rand4()}-${letters4()}`;",
+                  "",
+                  "pm.request.body.update({",
+                  "    mode: 'raw',",
+                  "    raw: JSON.stringify(reqBody, null, 2)",
+                  "});",
+                  "",
+                  "pm.environment.set(",
+                  "    'account_number',",
+                  "    reqBody.accountNumber",
+                  ");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Content-Type is JSON', function () {",
+                  "    pm.response.to.be.json;",
+                  "});",
+                  "",
+                  "pm.test('Response time < 2000ms', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "var rb = pm.response.json();",
+                  "",
+                  "pm.test('success true', function(){",
+                  "    pm.expect(rb.success).to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test('data exists', function(){",
+                  "    pm.expect(rb.data).to.not.be.undefined;",
+                  "});",
+                  "",
+                  "pm.test('timestamp exists', function(){",
+                  "    pm.expect(rb.timestamp).to.be.a('string');",
+                  "});",
+                  "",
+                  "pm.test('account number matches', function(){",
+                  "    pm.expect(rb.data.accountNumber)",
+                  "      .to.eql(pm.environment.get('account_number'));",
+                  "});",
+                  "",
+                  "pm.test('account type SAVINGS', function(){",
+                  "    pm.expect(rb.data.accountType)",
+                  "      .to.eql('SAVINGS');",
+                  "});",
+                  "",
+                  "pm.test('status ACTIVE', function(){",
+                  "    pm.expect(rb.data.status)",
+                  "      .to.eql('ACTIVE');",
+                  "});",
+                  "",
+                  "pm.test('balance numeric', function(){",
+                  "    pm.expect(rb.data.balance)",
+                  "      .to.be.a('number');",
+                  "});",
+                  "",
+                  "pm.environment.set(",
+                  "    'account_id',",
+                  "    rb.data.id",
+                  ");",
+                  "",
+                  "pm.environment.set(",
+                  "    'account_number',",
+                  "    rb.data.accountNumber",
+                  ");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[POSITIVE] Get Account By ID",
+          "request": {
+            "method": "GET",
+            "url": "{{base_txn}}/api/v1/accounts/{{account_id}}"
+          }
+        },
+        {
+          "name": "[POSITIVE] Get Account By Number",
+          "request": {
+            "method": "GET",
+            "url": "{{base_txn}}/api/v1/accounts/by-number/{{account_number}}"
+          }
+        },
+        {
+          "name": "[POSITIVE] List Accounts",
+          "request": {
+            "method": "GET",
+            "url": "{{base_txn}}/api/v1/accounts"
+          }
+        },
+        {
+          "name": "[POSITIVE] Filter Active Accounts",
+          "request": {
+            "method": "GET",
+            "url": "{{base_txn}}/api/v1/accounts?status=ACTIVE"
+          }
+        },
+        {
+          "name": "[POSITIVE] Suspend Account",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_txn}}/api/v1/accounts/{{account_id}}/status?status=SUSPENDED"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. Transaction Processing",
+      "item": [
+        {
+          "name": "[NEGATIVE] Self Transfer Forbidden",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"referenceNumber\": \"TXN-20260510-001\",\n  \"sourceAccountId\": \"{{account_id}}\",\n  \"destinationAccountId\": \"{{account_id}}\",\n  \"amount\": 10000,\n  \"transactionType\": \"TRANSFER\",\n  \"description\": \"self transfer\"\n}"
+            },
+            "url": "{{base_txn}}/api/v1/transactions"
+          }
+        },
+        {
+          "name": "[POSITIVE] Suspicious Transactions",
+          "request": {
+            "method": "GET",
+            "url": "{{base_txn}}/api/v1/transactions/suspicious"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Dashboard",
+      "item": [
+        {
+          "name": "Dashboard Summary",
+          "request": {
+            "method": "GET",
+            "url": "{{base_txn}}/api/v1/dashboard/summary"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Audit Service",
+      "item": [
+        {
+          "name": "Reconciliation History",
+          "request": {
+            "method": "GET",
+            "url": "{{base_audit}}/api/v1/reconciliation/history"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_txn",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "base_audit",
+      "value": "http://localhost:8082"
+    }
+  ]
+}

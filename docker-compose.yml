@@ -1,0 +1,73 @@
+version: "3.9"
+
+networks:
+  finsight-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: finsight-postgres
+    environment:
+      POSTGRES_DB: finsight
+      POSTGRES_USER: finsight_user
+      POSTGRES_PASSWORD: finsight_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - finsight-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finsight_user -d finsight"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  transaction-service:
+    build:
+      context: ./transaction-service
+      dockerfile: Dockerfile
+    container_name: finsight-transaction-service
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/finsight
+      SPRING_DATASOURCE_USERNAME: finsight_user
+      SPRING_DATASOURCE_PASSWORD: finsight_pass
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 8081
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - finsight-network
+    restart: on-failure
+
+  audit-service:
+    build:
+      context: ./audit-service
+      dockerfile: Dockerfile
+    container_name: finsight-audit-service
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/finsight
+      SPRING_DATASOURCE_USERNAME: finsight_user
+      SPRING_DATASOURCE_PASSWORD: finsight_pass
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 8082
+      TRANSACTION_SERVICE_URL: http://transaction-service:8081
+    depends_on:
+      postgres:
+        condition: service_healthy
+      transaction-service:
+        condition: service_started
+    networks:
+      - finsight-network
+    restart: on-failure
